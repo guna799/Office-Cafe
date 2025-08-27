@@ -1,0 +1,51 @@
+name: Deploy React App to EC2
+
+on:
+  push:
+    branches:
+      - main  # Change to your deployment branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'  # or your required version
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Build the project
+      - name: Build project
+        run: npm run build
+
+      # 5. Copy files to EC2
+      - name: Deploy to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 18.224.17.130
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "dist/*"
+          target: "/tmp/deploy"
+
+      # 6. SSH into EC2 and move files
+      - name: SSH and Deploy on Server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 18.224.17.130
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo rm -rf /var/www/html/*
+            sudo mv /tmp/deploy/* /var/www/html/
+            sudo systemctl restart nginx
